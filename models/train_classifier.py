@@ -27,8 +27,8 @@ def load_data(database_filepath):
         database_filepath: database filepath
 
     Returns:
-        X (DataFrame): Feature variables
-        y (DataFrame): Target values
+        X: Feature variables
+        y: Target values
 
     """
 
@@ -44,10 +44,10 @@ def tokenize(text):
     """Function that tokenizes a given text
 
     Args:
-        text (str): text to be tokenized
+        text: text to be tokenized
 
     Returns:
-        tokens (list of str): tokenized words from text
+        tokens: tokenized words from text
 
     """
 
@@ -69,22 +69,27 @@ def tokenize(text):
 def build_model():
     """Function that builds a machine learning model
 
+    Args:
+        None
+
     Returns:
         cv: classification model
 
     """
 
     # build machine learning pipeline
-    pipeline = Pipeline([
-        ('vect', CountVectorizer(tokenizer=tokenize)),
-        ('tfidf', TfidfTransformer()),
-        ('clf', MultiOutputClassifier(RandomForestClassifier())),
-    ])
+    pipeline = Pipeline(
+        [
+            ("vect", CountVectorizer(tokenizer=tokenize)),
+            ("tfidf", TfidfTransformer()),
+            ("clf", MultiOutputClassifier(RandomForestClassifier())),
+        ]
+    )
 
     parameters = {
-        'vect__ngram_range': ((1, 1), (1, 2)),   # unigrams and bigrams
-        'tfidf__use_idf': (True, False),
-        'clf__estimator__n_estimators': [50, 100],
+        "vect__ngram_range": ((1, 1), (1, 2)),  # unigrams and bigrams
+        "tfidf__use_idf": (True, False),
+        "clf__estimator__n_estimators": [50, 100],
     }
 
     cv = GridSearchCV(pipeline, param_grid=parameters)
@@ -93,13 +98,38 @@ def build_model():
 
 
 def evaluate_model(model, X_test, Y_test, category_names):
+    """Function that evaluates a model using sklearn classification_report
+    function
+
+    Args:
+        model: machine learning model
+        X_test: test portion of the Feature variables
+        Y_test: test portion of the classification
+        category_names: category names
+
+    Returns:
+        None
+
+    """
+
     y_pred = model.predict(X_test)
 
     print(classification_report(Y_test, y_pred, target_names=category_names))
 
 
 def save_model(model, model_filepath):
-    pass
+    """Function that exports the model as a pickle file
+
+    Args:
+        model: machine learning model
+        model_filepath: filepath
+
+    Returns:
+        None
+
+    """
+
+    pickle.dump(model, open(model_filepath, "wb"))
 
 
 def main():
