@@ -33,7 +33,7 @@ def load_data(database_filepath):
     """
 
     engine = create_engine("sqlite:///{}".format(database_filepath))
-    df = pd.read_sql_table("DisasterMessages", engine)
+    df = pd.read_sql_table("DisasterResponse", engine)
     X = df["message"]
     y = df[df.columns[5:]]
 
