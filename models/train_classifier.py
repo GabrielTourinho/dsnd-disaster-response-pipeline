@@ -29,6 +29,7 @@ def load_data(database_filepath):
     Returns:
         X: Feature variables
         y: Target values
+        category_names: Name of each category
 
     """
 
@@ -36,8 +37,9 @@ def load_data(database_filepath):
     df = pd.read_sql_table("DisasterResponseTable", engine)
     X = df["message"]
     y = df[df.columns[5:]]
+    category_names = y.columns
 
-    return X, y
+    return X, y, category_names
 
 
 def tokenize(text):
