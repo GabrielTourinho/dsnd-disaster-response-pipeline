@@ -1,6 +1,7 @@
 import json
 import plotly
 import pandas as pd
+import joblib
 
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
@@ -8,13 +9,24 @@ from nltk.tokenize import word_tokenize
 from flask import Flask
 from flask import render_template, request, jsonify
 from plotly.graph_objs import Bar
-from sklearn.externals import joblib
-from sqlalchemy import create_engine
 
+from sqlalchemy import create_engine
+import sys
+
+sys.path.append("./models")
 
 app = Flask(__name__)
 
 def tokenize(text):
+    """Function that tokenizes a given text
+
+        Args:
+            text: text to be tokenized
+
+        Returns:
+            tokens: tokenized words from text
+
+    """
     tokens = word_tokenize(text)
     lemmatizer = WordNetLemmatizer()
 
@@ -26,11 +38,11 @@ def tokenize(text):
     return clean_tokens
 
 # load data
-engine = create_engine('sqlite:///../data/DisasterResponse.db')
+engine = create_engine('sqlite:///./data/DisasterResponse.db')
 df = pd.read_sql_table('DisasterResponseTable', engine)
 
 # load model
-model = joblib.load("../models/classifier.pkl")
+model = joblib.load("./models/classifier.pkl")
 
 
 # index webpage displays cool visuals and receives user input text for model
@@ -42,6 +54,10 @@ def index():
     # TODO: Below is an example - modify to extract data for your own visuals
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
+
+    # message count by category
+    category_count = df[df.columns[4:]].sum().sort_values()
+    category_name = list(category_count.index)
 
     # create visuals
     # TODO: Below is an example - modify to create your own visuals
@@ -61,6 +77,25 @@ def index():
                 },
                 'xaxis': {
                     'title': "Genre"
+                }
+            }
+        },
+        {
+            'data': [
+                Bar(
+                    x=category_name,
+                    y=category_count
+                )
+            ],
+
+            'layout': {
+                'title': 'Distribution of Message by Category',
+                'yaxis': {
+                    'title': "Count"
+                },
+                'xaxis': {
+                    'title': "Category",
+                    'tickangle': 90
                 }
             }
         }
@@ -98,3 +133,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

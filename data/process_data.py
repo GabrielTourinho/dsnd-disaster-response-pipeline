@@ -24,6 +24,20 @@ def load_data(messages_filepath, categories_filepath):
     # merge datasets
     df = pd.merge(messages, categories, how="outer", on="id")
 
+    return df
+
+
+def clean_data(df):
+    """Function that cleans the DataFrame
+
+    Args:
+        df: DataFrame to be cleaned
+
+    Returns:
+        df: cleaned DataFrame
+
+    """
+
     # create a dataframe of the 36 individual category columns
     categories = df["categories"].str.split(pat=";", expand=True)
 
@@ -44,25 +58,15 @@ def load_data(messages_filepath, categories_filepath):
         # convert column from string to numeric
         categories[column] = pd.to_numeric(categories[column])
 
+    # make every category binary
+    for col in categories.columns:
+        categories.loc[(categories[col] > 1)] = 1
+
     # drop the original categories column from 'df'
     df = df.drop(columns="categories", axis=1)
 
     # concatenate the original dataframe with the new 'categories' dataframe
     df = pd.concat([df, categories], axis=1)
-
-    return df
-
-
-def clean_data(df):
-    """Function that cleans the DataFrame
-
-    Args:
-        df: DataFrame to be cleaned
-
-    Returns:
-        df: cleaned DataFrame
-
-    """
 
     # drop duplicates
     df = df.drop_duplicates()
@@ -82,7 +86,7 @@ def save_data(df, database_filename):
 
     """
 
-    engine = create_engine("sqlite:///" + str(database_filename))
+    engine = create_engine("sqlite:///{}".format(database_filename))
     df.to_sql("DisasterResponseTable", engine, index=False, if_exists="replace")
 
 
@@ -119,3 +123,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

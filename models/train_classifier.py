@@ -4,9 +4,10 @@ import re
 import nltk
 import pickle
 
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.multioutput import MultiOutputClassifier
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
@@ -18,7 +19,31 @@ from nltk.corpus import stopwords
 nltk.download("punkt")
 nltk.download("stopwords")
 nltk.download("wordnet")
+nltk.download("averaged_perceptron_tagger")
 
+class StartingVerbExtractor(BaseEstimator, TransformerMixin):
+    """Starting Verb Extractor class
+
+    This class extracts the starting verb of a sentence,
+    creating a new feature for the classifier.
+
+    """
+    def starting_verb(self, text):
+        text = re.sub(r"[^a-zA-Z0-9]", " ", text.lower())
+        sentence_list = nltk.sent_tokenize(text)
+        for sentence in sentence_list:
+            pos_tags = nltk.pos_tag(tokenize(sentence))
+            first_word, first_tag = pos_tags[0]
+            if first_tag in ['VB', 'VBP'] or first_word == 'RT':
+                return True
+        return False
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        X_tagged = pd.Series(X).apply(self.starting_verb)
+        return pd.DataFrame(X_tagged)
 
 def load_data(database_filepath):
     """Function that loads data from database
@@ -80,17 +105,19 @@ def build_model():
     """
 
     # build machine learning pipeline
-    pipeline = Pipeline(
-        [
-            ("vect", CountVectorizer(tokenizer=tokenize)),
-            ("tfidf", TfidfTransformer()),
-            ("clf", MultiOutputClassifier(RandomForestClassifier())),
-        ]
-    )
+    pipeline = Pipeline([
+        ('features', FeatureUnion([
+            ('text_pipeline', Pipeline([
+                ('vect', CountVectorizer(tokenizer=tokenize)),
+                ('tfidf', TfidfTransformer())
+            ])),
+            ('starting_verb', StartingVerbExtractor())
+        ])),
+        ('clf', MultiOutputClassifier(RandomForestClassifier()))
+    ])
 
     parameters = {
-        "vect__ngram_range": ((1, 1), (1, 2)),  # unigrams and bigrams
-        "tfidf__use_idf": (True, False),
+        "features__text_pipeline__tfidf__use_idf": (True, False),
         "clf__estimator__n_estimators": [50, 100],
     }
 
@@ -99,7 +126,7 @@ def build_model():
     return cv
 
 
-def evaluate_model(model, X_test, Y_test, category_names):
+def evaluate_model(model, X_test, Y_test):
     """Function that evaluates a model using sklearn classification_report
     function
 
@@ -107,7 +134,6 @@ def evaluate_model(model, X_test, Y_test, category_names):
         model: machine learning model
         X_test: test portion of the Feature variables
         Y_test: test portion of the classification
-        category_names: category names
 
     Returns:
         None
@@ -116,7 +142,14 @@ def evaluate_model(model, X_test, Y_test, category_names):
 
     y_pred = model.predict(X_test)
 
-    print(classification_report(Y_test, y_pred, target_names=category_names))
+    i = 0
+    for col in Y_test:
+        print('Category: {}'.format(col))
+        print(classification_report(Y_test[col], y_pred[:, i]))
+        i += 1
+
+    accuracy = (y_pred == Y_test.values).mean()
+    print('The model accuracy is {:.2f}'.format(accuracy))
 
 
 def save_model(model, model_filepath):
@@ -148,7 +181,7 @@ def main():
         model.fit(X_train, Y_train)
 
         print("Evaluating model...")
-        evaluate_model(model, X_test, Y_test, category_names)
+        evaluate_model(model, X_test, Y_test)
 
         print("Saving model...\n    MODEL: {}".format(model_filepath))
         save_model(model, model_filepath)
