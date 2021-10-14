@@ -1,0 +1,6 @@
+.DS_Store
+.idea/
+.venv
+Pipfile
+__pycache__
+run.sh
